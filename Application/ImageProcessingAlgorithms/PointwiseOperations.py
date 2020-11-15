@@ -6,6 +6,7 @@ import math
 
 from Application.Utils.AlgorithmDecorators import RegisterAlgorithm
 from Application.Utils.OutputDecorators import OutputDialog
+from Application.Utils.InputDecorators import InputDialog
 
 
 @RegisterAlgorithm("Invert", "PointwiseOp")
@@ -134,3 +135,48 @@ def otsu(image):
     else:
         return {
             'processedImage': "ERROR:\nImage isn't grayscale"}
+
+def computeIntegralImage(image):
+    
+    intImageArray = numpy.zeros([image.shape[0],image.shape[1]],dtype=int)
+
+    for i in range(0, image.shape[0]) :
+        for j in range (0, image.shape[1]) :
+            if(j != 0) :
+                intImageArray[i,j] = intImageArray[i,j-1] + image[i,j]
+            else :
+                intImageArray[i,j] = image[i,j]
+
+    for i in range(1, image.shape[0]) :
+        for j in range(0, image.shape[1]) :
+            intImageArray[i,j] = intImageArray[i-1,j] + intImageArray[i,j]
+
+    return intImageArray
+        
+
+
+@RegisterAlgorithm("Mean Filter", "PointwiseOp")
+@InputDialog(maskSize=int)
+def meanFilter(image,maskSize = 3):
+
+    if maskSize % 2  == 0:
+         maskSize += 1
+
+    intImageArray = computeIntegralImage(image)
+    filteredImage = numpy.zeros([intImageArray.shape[0],intImageArray.shape[1]],dtype=int)
+    filterPadding = maskSize // 2
+    for i in range (filterPadding + 1, intImageArray.shape[0]-filterPadding- 1) :
+        for j in range (filterPadding + 1, intImageArray.shape[1] - filterPadding -1) :
+            cummulative_diff =\
+                intImageArray[i+filterPadding][j+filterPadding] +\
+                intImageArray[i-filterPadding-1][j-filterPadding-1] -\
+                intImageArray[i+filterPadding][j-filterPadding-1] -\
+                intImageArray[i-filterPadding-1][j+filterPadding]
+            cummulative_diff = cummulative_diff / (maskSize**2)
+            filteredImage[i,j]=cummulative_diff
+    
+    filteredImage = numpy.array(filteredImage, dtype = numpy.uint8)
+   
+    return {
+        'processedImage': filteredImage
+    }
