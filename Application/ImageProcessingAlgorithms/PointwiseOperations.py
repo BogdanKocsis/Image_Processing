@@ -100,41 +100,39 @@ def invertLogOperator(image):
 @RegisterAlgorithm("Otsu's Binarization", "Binarization")
 def otsu(image):
     if image.ndim == 2:
-        # Image Properties
-        histogram_array = numpy.histogram(image, bins=range(257), range=(-1, 255))[0]
-        total_px_nr = numpy.prod(image.shape)
-        colors_array = numpy.arange(256)
 
-        # Probability
+        histogram_array = numpy.histogram(image, bins=range(257), range=(-1, 256))[0]
+        total_px_nr = numpy.prod(image.shape)
+        k = numpy.arange(256)
+
         prob_array = histogram_array / total_px_nr
 
-        # Otsu Variables
         max_variance_btw_classes = float()
         optimal_threshold = int()
-        
-        # T
+
         threshold = 1
         while threshold != 255:
-            class0 = prob_array[:threshold + 1]
-            class1 = prob_array[threshold + 1:]
-            p0 = numpy.sum(class0)
+            class1 = prob_array[:threshold + 1]
+            class2 = prob_array[threshold + 1:]
             p1 = numpy.sum(class1)
-            mean0 = numpy.sum(prob_array[:threshold + 1] * colors_array[:threshold + 1]) / p0
-            mean1 = numpy.sum(prob_array[threshold + 1:] * colors_array[threshold + 1:]) / p1
-            variance_btw_classes = p0 * p1 * ((mean0 - mean1) ** 2)
+            p2 = numpy.sum(class2)
+            mean1 = numpy.sum(prob_array[:threshold + 1] * k[:threshold + 1]) / p1
+            mean2 = numpy.sum(prob_array[threshold + 1:] * k[threshold + 1:]) / p2
+            variance_btw_classes = p1 * p2 * ((mean1 - mean2) ** 2)
             if variance_btw_classes > max_variance_btw_classes:
                 max_variance_btw_classes = variance_btw_classes
                 optimal_threshold = threshold
             threshold += 1
 
-        image[image < optimal_threshold] = 0
-        image[image >= optimal_threshold] = 255
+        # image[image < optimal_threshold] = 0
+        # image[image >= optimal_threshold] = 255
         return {
             # 'processedImage': image,
             'outputMessage': "SUCCES\nThreshold: " + str(optimal_threshold)}
     else:
         return {
             'processedImage': "ERROR:\nImage isn't grayscale"}
+
 
 def computeIntegralImage(image):
     
@@ -158,25 +156,30 @@ def computeIntegralImage(image):
 @RegisterAlgorithm("Mean Filter", "PointwiseOp")
 @InputDialog(maskSize=int)
 def meanFilter(image,maskSize = 3):
+    if image.ndim == 2:
+        if maskSize % 2  == 0:
+            maskSize += 1
 
-    if maskSize % 2  == 0:
-         maskSize += 1
+        intImageArray = computeIntegralImage(image)
+              
+        filterPadding = maskSize // 2
+        print(filterPadding)
 
-    intImageArray = computeIntegralImage(image)
-    filteredImage = numpy.zeros([intImageArray.shape[0],intImageArray.shape[1]],dtype=int)
-    filterPadding = maskSize // 2
-    for i in range (filterPadding + 1, intImageArray.shape[0]-filterPadding- 1) :
-        for j in range (filterPadding + 1, intImageArray.shape[1] - filterPadding -1) :
-            cummulative_diff =\
-                intImageArray[i+filterPadding][j+filterPadding] +\
-                intImageArray[i-filterPadding-1][j-filterPadding-1] -\
-                intImageArray[i+filterPadding][j-filterPadding-1] -\
-                intImageArray[i-filterPadding-1][j+filterPadding]
-            cummulative_diff = cummulative_diff / (maskSize**2)
-            filteredImage[i,j]=cummulative_diff
+        for i in range (filterPadding + 1, intImageArray.shape[0]- filterPadding - 1) :
+            for j in range (filterPadding + 1, intImageArray.shape[1] - filterPadding - 1) :
+                _sum =\
+                    intImageArray[i+filterPadding][j+filterPadding] +\
+                    intImageArray[i-filterPadding-1][j-filterPadding-1] -\
+                    intImageArray[i+filterPadding][j-filterPadding-1] -\
+                    intImageArray[i-filterPadding-1][j+filterPadding]
+                mean = _sum / (maskSize**2)
+                image[i,j] = mean
+        
+        filteredImage = numpy.array(image, dtype = numpy.uint8)
     
-    filteredImage = numpy.array(filteredImage, dtype = numpy.uint8)
-   
-    return {
-        'processedImage': filteredImage
-    }
+        return {
+            'processedImage': filteredImage
+        }
+    else:
+        return {
+            'processedImage': "ERROR:\nImage isn't grayscale"}
