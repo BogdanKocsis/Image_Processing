@@ -44,33 +44,31 @@ def getLogLUT(value):
     return lookUpTable.astype(int)
 
 
-
 def getLogLUTForReverse(value):
 
     c = 255 / math.log(float(1 + value))
-    
-    loopUpTable = numpy.empty(256)
-    for x in range(0,256):
-        loopUpTable[x] = round(reverseTransform(c,x))
 
-    return loopUpTable 
+    loopUpTable = numpy.empty(256)
+    for x in range(0, 256):
+        loopUpTable[x] = round(reverseTransform(c, x))
+
+    return loopUpTable
 
 
 @RegisterAlgorithm("Log Operator", "PointwiseOp")
 def logOperator(image):
-  
+
     # LUT = numpy.empty(256)
     # LUT =  getLogLUT(numpy.max(image))
-
 
     # # for i in range(image.shape[0]):
     # #     for j in range(image.shape[1]):
     # #         image[i, j] = LUT[image[i,j]]
 
-    c = 255 / numpy.log10(1 + numpy.max(image)) 
-    log_image = c * (numpy.log10(image + 1)) 
-   
-    log_image = numpy.array(log_image, dtype = numpy.uint8)
+    c = 255 / numpy.log10(1 + numpy.max(image))
+    log_image = c * (numpy.log10(image + 1))
+
+    log_image = numpy.array(log_image, dtype=numpy.uint8)
 
     return {
         'processedImage': log_image
@@ -79,7 +77,7 @@ def logOperator(image):
 
 @RegisterAlgorithm("Invert Operator", "PointwiseOp")
 def invertLogOperator(image):
-  
+
     # LUT = numpy.empty(256)
     # LUT =  getLogLUTForReverse(numpy.max(image))
 
@@ -87,9 +85,9 @@ def invertLogOperator(image):
     #     for j in range(image.shape[1]):
     #         image[i, j] = LUT[image[i,j]]
 
-    c = 255 / numpy.log(1 + numpy.max(image)) 
+    c = 255 / numpy.log(1 + numpy.max(image))
     log_image = numpy.exp(image/c)-1
-    log_image = numpy.array(log_image, dtype = numpy.uint8)
+    log_image = numpy.array(log_image, dtype=numpy.uint8)
 
     return {
         'processedImage': log_image
@@ -101,7 +99,8 @@ def invertLogOperator(image):
 def otsu(image):
     if image.ndim == 2:
 
-        histogram_array = numpy.histogram(image, bins=range(257), range=(-1, 256))[0]
+        histogram_array = numpy.histogram(
+            image, bins=range(257), range=(-1, 256))[0]
         total_px_nr = numpy.prod(image.shape)
         k = numpy.arange(256)
 
@@ -116,8 +115,10 @@ def otsu(image):
             class2 = prob_array[threshold + 1:]
             p1 = numpy.sum(class1)
             p2 = numpy.sum(class2)
-            mean1 = numpy.sum(prob_array[:threshold + 1] * k[:threshold + 1]) / p1
-            mean2 = numpy.sum(prob_array[threshold + 1:] * k[threshold + 1:]) / p2
+            mean1 = numpy.sum(
+                prob_array[:threshold + 1] * k[:threshold + 1]) / p1
+            mean2 = numpy.sum(
+                prob_array[threshold + 1:] * k[threshold + 1:]) / p2
             variance_btw_classes = p1 * p2 * ((mean1 - mean2) ** 2)
             if variance_btw_classes > max_variance_btw_classes:
                 max_variance_btw_classes = variance_btw_classes
@@ -135,51 +136,79 @@ def otsu(image):
 
 
 def computeIntegralImage(image):
-    
-    intImageArray = numpy.zeros([image.shape[0],image.shape[1]],dtype=int)
 
-    for i in range(0, image.shape[0]) :
-        for j in range (0, image.shape[1]) :
-            if(j != 0) :
-                intImageArray[i,j] = intImageArray[i,j-1] + image[i,j]
-            else :
-                intImageArray[i,j] = image[i,j]
+    intImageArray = numpy.zeros([image.shape[0], image.shape[1]], dtype=int)
 
-    for i in range(1, image.shape[0]) :
-        for j in range(0, image.shape[1]) :
-            intImageArray[i,j] = intImageArray[i-1,j] + intImageArray[i,j]
+    for i in range(0, image.shape[0]):
+        for j in range(0, image.shape[1]):
+            if(j != 0):
+                intImageArray[i, j] = intImageArray[i, j-1] + image[i, j]
+            else:
+                intImageArray[i, j] = image[i, j]
+
+    for i in range(1, image.shape[0]):
+        for j in range(0, image.shape[1]):
+            intImageArray[i, j] = intImageArray[i-1, j] + intImageArray[i, j]
 
     return intImageArray
-        
 
 
-@RegisterAlgorithm("Mean Filter", "PointwiseOp")
+@RegisterAlgorithm("Mean Filter", "Filter")
 @InputDialog(maskSize=int)
-def meanFilter(image,maskSize = 3):
+def meanFilter(image, maskSize=3):
     if image.ndim == 2:
-        if maskSize % 2  == 0:
+        if maskSize % 2 == 0:
             maskSize += 1
 
         intImageArray = computeIntegralImage(image)
-              
+
         filterPadding = maskSize // 2
         print(filterPadding)
 
-        for i in range (filterPadding + 1, intImageArray.shape[0]- filterPadding - 1) :
-            for j in range (filterPadding + 1, intImageArray.shape[1] - filterPadding - 1) :
+        for i in range(filterPadding + 1, intImageArray.shape[0] - filterPadding - 1):
+            for j in range(filterPadding + 1, intImageArray.shape[1] - filterPadding - 1):
                 _sum =\
                     intImageArray[i+filterPadding][j+filterPadding] +\
                     intImageArray[i-filterPadding-1][j-filterPadding-1] -\
                     intImageArray[i+filterPadding][j-filterPadding-1] -\
                     intImageArray[i-filterPadding-1][j+filterPadding]
                 mean = _sum / (maskSize**2)
-                image[i,j] = mean
-        
-        filteredImage = numpy.array(image, dtype = numpy.uint8)
-    
+                image[i, j] = mean
+
+        filteredImage = numpy.array(image, dtype=numpy.uint8)
+
         return {
             'processedImage': filteredImage
         }
     else:
         return {
             'processedImage': "ERROR:\nImage isn't grayscale"}
+
+
+@InputDialog(threshold=int)
+@RegisterAlgorithm("Sobel Filter", "Filter")
+def sobel_filter(image, threshold):
+    if image.ndim == 2:
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+        target_image = numpy.empty([image.shape[0], image.shape[1]])
+
+        for i in range(1, image_height-1):
+            for j in range(1, image_width-1):
+                Fy = int(image[i-1, j+1])-int(image[i-1, j-1])+2*int(image[i, j+1]) - 2*int(image[i, j-1])+int(image[i+1, j+1])-int(image[i+1, j-1])
+                Fx = int(image[i+1, j-1])-int(image[i-1, j-1])+2*int(image[i+1, j]) - 2*int(image[i-1, j])+int(image[i+1, j+1])-int(image[i-1, j+1])
+                g = math.sqrt((Fx ** 2) + (Fy ** 2))
+
+                if g >= threshold :
+                    theta = math.atan2(Fx, Fy) * (180 / math.pi)
+                    target_image[i, j] = 255 if (theta >= -5 and theta <= 5) or (theta >= -180 and theta <= -175) or (theta >= 175 and theta <= 180) else 0
+
+
+        target_image = numpy.array(target_image, dtype=numpy.uint8)
+        return {
+            'processedImage': target_image
+        }
+
+    else:
+        return {
+            'outputMessage': "ERROR:\nImage isn't grayscale"}
