@@ -2,7 +2,10 @@
 Module docstring?
 """
 import numpy
+import collections
 import math
+import skimage
+from skimage.filters import threshold_otsu
 
 from Application.Utils.AlgorithmDecorators import RegisterAlgorithm
 from Application.Utils.OutputDecorators import OutputDialog
@@ -125,11 +128,12 @@ def otsu(image):
                 optimal_threshold = threshold
             threshold += 1
 
-        # image[image < optimal_threshold] = 0
-        # image[image >= optimal_threshold] = 255
+        image[image < optimal_threshold] = 0
+        image[image >= optimal_threshold] = 255
         return {
-            # 'processedImage': image,
-            'outputMessage': "SUCCES\nThreshold: " + str(optimal_threshold)}
+            'processedImage': image,
+            # 'outputMessage': "SUCCES\nThreshold: " + str(optimal_threshold)
+        }
     else:
         return {
             'processedImage': "ERROR:\nImage isn't grayscale"}
@@ -195,14 +199,18 @@ def sobel_filter(image, threshold):
 
         for i in range(1, image_height-1):
             for j in range(1, image_width-1):
-                Fy = int(image[i-1, j+1])-int(image[i-1, j-1])+2*int(image[i, j+1]) - 2*int(image[i, j-1])+int(image[i+1, j+1])-int(image[i+1, j-1])
-                Fx = int(image[i+1, j-1])-int(image[i-1, j-1])+2*int(image[i+1, j]) - 2*int(image[i-1, j])+int(image[i+1, j+1])-int(image[i-1, j+1])
+                Fy = int(image[i-1, j+1])-int(image[i-1, j-1])+2*int(image[i, j+1]) - \
+                    2*int(image[i, j-1])+int(image[i+1, j+1]) - \
+                    int(image[i+1, j-1])
+                Fx = int(image[i+1, j-1])-int(image[i-1, j-1])+2*int(image[i+1, j]) - \
+                    2*int(image[i-1, j])+int(image[i+1, j+1]) - \
+                    int(image[i-1, j+1])
                 g = math.sqrt((Fx ** 2) + (Fy ** 2))
 
-                if g >= threshold :
+                if g >= threshold:
                     theta = math.atan2(Fx, Fy) * (180 / math.pi)
-                    target_image[i, j] = 255 if (theta >= -5 and theta <= 5) or (theta >= -180 and theta <= -175) or (theta >= 175 and theta <= 180) else 0
-
+                    target_image[i, j] = 255 if (theta >= -5 and theta <= 5) or (
+                        theta >= -180 and theta <= -175) or (theta >= 175 and theta <= 180) else 0
 
         target_image = numpy.array(target_image, dtype=numpy.uint8)
         return {
@@ -212,3 +220,74 @@ def sobel_filter(image, threshold):
     else:
         return {
             'outputMessage': "ERROR:\nImage isn't grayscale"}
+
+
+
+def erosion(image, maskSize=3):
+
+    target_image = numpy.empty([image.shape[0], image.shape[1]])
+    img_height = image.shape[0]
+    img_width = image.shape[1]
+    border = maskSize // 2
+
+    for y in range(border, img_height - border):
+        for x in range(border, img_width - border):
+            blackPixel = False
+            for i in range(-border, border+1):
+                for j in range(-border, border+1):
+                    if int(image[y+i, x+j]) == 0:
+                        blackPixel = True
+                        break
+
+            oldGray = int(image[y, x])
+
+            if oldGray == 0 or blackPixel:
+                target_image[y, x] = 0
+            else:
+                target_image[y, x] = 255
+
+    return target_image.astype(numpy.uint8)
+
+
+def dilatation(image, maskSize=3):
+    target_image = numpy.empty([image.shape[0], image.shape[1]])
+    img_height = image.shape[0]
+    img_width = image.shape[1]
+    border = maskSize // 2
+
+    for y in range(border, img_height - border):
+        for x in range(border, img_width - border):
+            whitePixel = False
+            for i in range(-border, border+1):
+                for j in range(-border, border+1):
+                    if int(image[y+i, x+j]) == 255:
+                        whitePixel = True
+                        break
+
+            oldGray = int(image[y, x])
+
+            if oldGray == 255 or whitePixel:
+                target_image[y, x] = 255
+            else:
+                target_image[y, x] = 0
+
+    return target_image.astype(numpy.uint8)
+
+
+@RegisterAlgorithm("Opening", "Morphology")
+@InputDialog(maskSize=int)
+@OutputDialog(title="Result")
+def opening(image, maskSize=3):
+    histogram_array = numpy.histogram(
+        image, bins=range(257), range=(-1, 255))[0]
+    boolean_histogram_array = histogram_array != 0
+    if numpy.any(boolean_histogram_array[1:255]):
+        return {
+            'outputMessage': "ERROR:\nImage isn't binarized"}
+
+    image_eroded = erosion(image, maskSize)
+    image_result = dilatation(image_eroded, maskSize)
+
+    return {
+        'processedImage': image_result.astype(numpy.uint8),
+    }
