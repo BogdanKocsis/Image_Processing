@@ -4,8 +4,6 @@ Module docstring?
 import numpy
 import collections
 import math
-import skimage
-from skimage.filters import threshold_otsu
 
 from Application.Utils.AlgorithmDecorators import RegisterAlgorithm
 from Application.Utils.OutputDecorators import OutputDialog
@@ -222,7 +220,6 @@ def sobel_filter(image, threshold):
             'outputMessage': "ERROR:\nImage isn't grayscale"}
 
 
-
 def erosion(image, maskSize=3):
 
     target_image = numpy.empty([image.shape[0], image.shape[1]])
@@ -291,3 +288,55 @@ def opening(image, maskSize=3):
     return {
         'processedImage': image_result.astype(numpy.uint8),
     }
+
+
+def bilinearRotation(image, degrees):
+
+    # Image
+    image_width = image.shape[1]
+    image_height = image.shape[0]
+    target_image = numpy.zeros(
+        [image.shape[0], image.shape[1]], dtype=numpy.uint8)
+    radians = degrees * math.pi/180
+    center_x = image_width / 2
+    center_y = image_height / 2
+
+    for y_1 in range(0, image_height):
+        for x_1 in range(0, image_width):
+
+            xc = (x_1-center_x) * math.cos(radians) - \
+                (y_1-center_y)*math.sin(radians) + center_x
+            yc = (x_1-center_x) * math.sin(radians) + \
+                (y_1-center_y)*math.cos(radians) + center_y
+
+            x = int(math.floor(xc))
+            y = int(math.floor(yc))
+
+            xd = float(xc - int(xc))
+            yd = float(yc - int(yc))
+            if (xc >= 0) and (xc < target_image.shape[1] - 1) and (yc >= 0) and (yc < target_image.shape[0] - 1):
+                target_image[y_1, x_1] = (1 - xd) * (1 - yd) * int(image[y, x]) + xd * (1 - yd) * int(image[y, x + 1]) + (
+                    1 - xd) * yd * int(image[y + 1, x]) + xd * yd * int(image[y + 1, x + 1])
+
+    return numpy.round_(target_image).astype(numpy.uint8)
+
+
+
+
+@RegisterAlgorithm("Rotation", "Interpolation")
+@InputDialog(degrees=int)
+@OutputDialog(title="Result")
+def rotation(image, degrees):
+    if image.ndim == 2:
+
+        target_image = bilinearRotation(image, degrees)
+        index = 1
+        while index < 4:
+            target_image = bilinearRotation(target_image, degrees)
+            index= index + 1
+
+        return {
+            'processedImage': numpy.round_(target_image).astype(numpy.uint8)}
+    else:
+        return {
+            'outputMessage': "ERROR:\nImage isn't grayscale"}
