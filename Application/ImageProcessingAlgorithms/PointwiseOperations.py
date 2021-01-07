@@ -191,42 +191,10 @@ def meanFilter(image, maskSize=3):
         return {
             'processedImage': "ERROR:\nImage isn't grayscale"}
 
+
 @InputDialog(threshold=int)
-@OutputDialog(title="Result")
-@RegisterAlgorithm("Sobel", "Filter")
+@RegisterAlgorithm("Sobel Filter", "Filter")
 def sobel_filter(image, threshold):
-    if image.ndim == 2:
-        image_width = image.shape[1]
-        image_height = image.shape[0]
-        target_image = numpy.empty([image.shape[0], image.shape[1]])
-
-        h1 = numpy.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-        h2 = numpy.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
-        for i in range(len(image)):
-            for j in range(len(image[i])):
-                if i == 0 or j == 0 or i == image_height - 1 or j == image_width - 1:
-                    target_image[i][j] = 0
-                else:
-                    this_slice = image[i - 1:i + 2, j - 1:j + 2]
-                    g1 = this_slice * h1
-                    g2 = this_slice * h2
-                    g1_sum = numpy.sum(g1)
-                    g2_sum = numpy.sum(g2)
-                    g = math.sqrt((g1_sum ** 2) + (g2_sum ** 2))
-
-                    target_image[i][j] = 255 if g >= threshold else 0
-        return {
-            'processedImage': target_image.astype(numpy.uint8),
-            'outputMessage': "SUCCESS"}
-
-    else:
-        return {
-            'outputMessage': "ERROR:\nImage isn't grayscale"}
-
-
-@InputDialog(threshold=int)
-@RegisterAlgorithm("Sobel Vertical", "Filter")
-def sobel_filter_vertical(image, threshold):
     if image.ndim == 2:
         image_width = image.shape[1]
         image_height = image.shape[0]
@@ -326,39 +294,4 @@ def opening(image, maskSize=3):
     return {
         'processedImage': image_result.astype(numpy.uint8),
     }
-
-
-
-@RegisterAlgorithm("HoughTransform", "Hough")
-@OutputDialog(title="Result")
-def houghTransform(image):
-    # Binarization Test
-    histogram_array = numpy.histogram(image, bins=range(257), range=(-1, 255))[0]
-    boolean_histogram_array = histogram_array != 0
-    if numpy.any(boolean_histogram_array[1:255]):
-        return {
-            'outputMessage': "ERROR:\nImage isn't binarized"}
-    else :
-
-        image_width = image.shape[1]
-        image_height = image.shape[0]
-        hough_matrix = numpy.zeros([int(math.sqrt((image_height ** 2) + (image_width ** 2))) + 2, 271], dtype=numpy.int)
-
-        white_px_index = numpy.where( image > 130)
-        white_px_coords = list(zip(white_px_index[0], white_px_index[1]))
-        for px in white_px_coords:
-            for alpha in range(-90, 180):
-                radius = math.cos(alpha * math.pi/180) * px[1] + math.sin(alpha * math.pi/180)*px[0]
-                if radius >= 0:
-                    hough_matrix[numpy.int(radius),alpha+90] +=1
-
-        h_max = numpy.max(hough_matrix)
-        hough_matrix_scaled = 255.0 / h_max * hough_matrix
-
-        return {
-            'processedImage':  hough_matrix_scaled.astype(numpy.uint8)
-
-        }
-
-
 
