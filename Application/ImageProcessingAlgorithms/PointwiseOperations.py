@@ -188,10 +188,42 @@ def meanFilter(image, maskSize=3):
         return {
             'processedImage': "ERROR:\nImage isn't grayscale"}
 
+@InputDialog(threshold=int)
+@OutputDialog(title="Result")
+@RegisterAlgorithm("Sobel", "Filter")
+def sobel_filter(image, threshold):
+    if image.ndim == 2:
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+        target_image = numpy.empty([image.shape[0], image.shape[1]])
+
+        h1 = numpy.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+        h2 = numpy.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+        for i in range(len(image)):
+            for j in range(len(image[i])):
+                if i == 0 or j == 0 or i == image_height - 1 or j == image_width - 1:
+                    target_image[i][j] = 0
+                else:
+                    this_slice = image[i - 1:i + 2, j - 1:j + 2]
+                    g1 = this_slice * h1
+                    g2 = this_slice * h2
+                    g1_sum = numpy.sum(g1)
+                    g2_sum = numpy.sum(g2)
+                    g = math.sqrt((g1_sum ** 2) + (g2_sum ** 2))
+
+                    target_image[i][j] = 255 if g >= threshold else 0
+        return {
+            'processedImage': target_image.astype(numpy.uint8),
+            'outputMessage': "SUCCESS"}
+
+    else:
+        return {
+            'outputMessage': "ERROR:\nImage isn't grayscale"}
+
 
 @InputDialog(threshold=int)
-@RegisterAlgorithm("Sobel Filter", "Filter")
-def sobel_filter(image, threshold):
+@RegisterAlgorithm("Sobel Vertical", "Filter")
+def sobel_filter_vertical(image, threshold):
     if image.ndim == 2:
         image_width = image.shape[1]
         image_height = image.shape[0]
@@ -291,3 +323,86 @@ def opening(image, maskSize=3):
     return {
         'processedImage': image_result.astype(numpy.uint8),
     }
+
+def bilinearRotation(image, degrees):
+
+    # Image
+    image_width = image.shape[1]
+    image_height = image.shape[0]
+    target_image = numpy.zeros(
+        [image.shape[0], image.shape[1]], dtype=numpy.uint8)
+    radians = degrees * math.pi/180
+    center_x = image_width / 2
+    center_y = image_height / 2
+
+    for y_1 in range(0, image_height):
+        for x_1 in range(0, image_width):
+
+            xc = (x_1-center_x) * math.cos(radians) - \
+                (y_1-center_y)*math.sin(radians) + center_x
+            yc = (x_1-center_x) * math.sin(radians) + \
+                (y_1-center_y)*math.cos(radians) + center_y
+
+            x = int(math.floor(xc))
+            y = int(math.floor(yc))
+
+            xd = float(xc - int(xc))
+            yd = float(yc - int(yc))
+            if (xc >= 0) and (xc < target_image.shape[1] - 1) and (yc >= 0) and (yc < target_image.shape[0] - 1):
+                target_image[y_1, x_1] = (1 - xd) * (1 - yd) * int(image[y, x]) + xd * (1 - yd) * int(image[y, x + 1]) + (
+                    1 - xd) * yd * int(image[y + 1, x]) + xd * yd * int(image[y + 1, x + 1])
+
+    return numpy.round_(target_image).astype(numpy.uint8)
+
+
+
+
+@RegisterAlgorithm("Rotation", "Interpolation")
+@InputDialog(degrees=int)
+@OutputDialog(title="Result")
+def rotation(image, degrees):
+    if image.ndim == 2:
+
+        target_image = bilinearRotation(image, degrees)
+        index = 1
+        while index < 4:
+            target_image = bilinearRotation(target_image, degrees)
+            index= index + 1
+
+        return {
+            'processedImage': numpy.round_(target_image).astype(numpy.uint8)}
+    else:
+        return {
+            'outputMessage': "ERROR:\nImage isn't grayscale"}
+
+@RegisterAlgorithm("HoughTransform", "Hough")
+@OutputDialog(title="Result")
+def houghTransform(image):
+    # Binarization Test
+    histogram_array = numpy.histogram(image, bins=range(257), range=(-1, 255))[0]
+    boolean_histogram_array = histogram_array != 0
+    if numpy.any(boolean_histogram_array[1:255]):
+        return {
+            'outputMessage': "ERROR:\nImage isn't binarized"}
+    else :
+
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+        hough_matrix = numpy.zeros([int(math.sqrt((image_height ** 2) + (image_width ** 2))) + 2, 271], dtype=numpy.int)
+
+        white_px_index = numpy.where( image > 130)
+        white_px_coords = list(zip(white_px_index[0], white_px_index[1]))
+        for px in white_px_coords:
+            for alpha in range(-90, 180):
+                radius = math.cos(alpha * math.pi/180) * px[1] + math.sin(alpha * math.pi/180)*px[0]
+                if radius >= 0:
+                    hough_matrix[numpy.int(radius),alpha+90] +=1
+
+        h_max = numpy.max(hough_matrix)
+        hough_matrix_scaled = 255.0 / h_max * hough_matrix
+
+        return {
+            'processedImage':  hough_matrix_scaled.astype(numpy.uint8)
+
+        }
+
