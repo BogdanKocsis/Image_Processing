@@ -390,7 +390,7 @@ def houghTransform(image):
         image_height = image.shape[0]
         hough_matrix = numpy.zeros([int(math.sqrt((image_height ** 2) + (image_width ** 2))) + 2, 271], dtype=numpy.int)
 
-        white_px_index = numpy.where( image > 130)
+        white_px_index = numpy.where( image == 255)
         white_px_coords = list(zip(white_px_index[0], white_px_index[1]))
         for px in white_px_coords:
             for alpha in range(-90, 180):
