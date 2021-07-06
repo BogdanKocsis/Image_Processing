@@ -1,6 +1,6 @@
 # Image Processing Platform
 
-##Algorithms [You can find them right here](https://github.com/BogdanKocsis/Image_Processing/blob/master/Application/ImageProcessingAlgorithms/PointwiseOperations.py)
+Algorithms [You can find them right here](https://github.com/BogdanKocsis/Image_Processing/blob/master/Application/ImageProcessingAlgorithms/PointwiseOperations.py)
 
 -Log Operator  
 -Invert Operator  
