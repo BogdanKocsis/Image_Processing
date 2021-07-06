@@ -2,16 +2,16 @@
 
 ##Algorithms [You can find them right here](https://github.com/BogdanKocsis/Image_Processing/blob/master/Application/ImageProcessingAlgorithms/PointwiseOperations.py)
 
--Log Operator
--Invert Operator
--Otsu's Binarization
--Mean Filter(+Integral Image)
--Sobel Filter
--Sobel Vertical
--Opening(Erosion + Dilatation)
--Rotation(Bilinear Rotation - Interpolatin)
--HoughTransform
-
+-Log Operator  
+-Invert Operator  
+-Otsu's Binarization  
+-Mean Filter(+Integral Image)  
+-Sobel Filter  
+-Sobel Vertical  
+-Opening(Erosion + Dilatation)  
+-Rotation(Bilinear Rotation - Interpolatin)  
+-HoughTransform  
+ 
 ## Romanian Guide
 An application guide in Romanian can be found here: [doc/ghid_utilizare.pdf](doc/ghid_utilizare.pdf)
 
